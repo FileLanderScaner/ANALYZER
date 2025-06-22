@@ -1,6 +1,6 @@
 // /src/app/api/paypal/webhook/route.ts
 import { NextResponse } from 'next/server';
-import paypal from '@paypal/checkout-server-sdk'; // SDK for verification, if applicable
+import paypal from '@paypal/checkout-server-sdk';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase admin client FOR DATABASE OPERATIONS
@@ -24,7 +24,6 @@ function getPayPalEnvironment() {
   const baseUrl = process.env.PAYPAL_API_BASE_URL || 'https://api-m.sandbox.paypal.com';
 
   if (!clientId || !clientSecret) {
-    console.error('CRITICAL ERROR (PayPal Webhook): PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET not configured for environment.');
     throw new Error('PayPal Client configuration incomplete for webhook.');
   }
 
