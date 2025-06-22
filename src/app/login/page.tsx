@@ -18,12 +18,34 @@ declare global {
   interface Window {
     FB: any;
     fbAsyncInit: () => void;
+    checkLoginState: () => void;
   }
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseClient = createBrowserClient(supabaseUrl, supabaseKey);
+
+function FacebookSdkLoader() {
+  useEffect(() => {
+    if (document.getElementById("facebook-jssdk")) return;
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: "v19.0",
+      });
+      window.FB.AppEvents.logPageView();
+    };
+    const script = document.createElement("script");
+    script.id = "facebook-jssdk";
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+  return null;
+}
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -85,6 +107,30 @@ const LoginPage = () => {
       window.fbAsyncInit();
     }
   }, [isFbSdkReady]);
+
+  // Función global para el botón de Facebook
+  useEffect(() => {
+    window.checkLoginState = function () {
+      if (window.FB) {
+        window.FB.getLoginStatus(function(response: any) {
+          statusChangeCallback(response);
+        });
+      }
+    };
+  }, []);
+
+  function statusChangeCallback(response: any) {
+    if (response.status === "connected") {
+      // Usuario autenticado y autorizado
+      // Aquí puedes hacer login en Supabase usando el accessToken de Facebook
+      // Ejemplo:
+      // supabaseClient.auth.signInWithOAuth({ provider: 'facebook', options: { accessToken: response.authResponse.accessToken } })
+      // O redirigir al dashboard
+      window.location.href = "/";
+    } else {
+      // No autenticado, muestra el botón o pide login
+    }
+  }
 
   const getPremiumStatusForToast = async (userId: string): Promise<boolean> => {
     const { data: profile, error: profileError } = await supabase
@@ -211,7 +257,10 @@ const LoginPage = () => {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/`, // Redirige a la página principal
+        queryParams: {
+          prompt: "select_account", // Fuerza selector de cuenta
+        },
       },
     });
     if (error) setError(error.message);
@@ -228,70 +277,73 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-secondary/50 p-4">
-      <Card className="w-full max-w-md shadow-2xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex items-center justify-center gap-2">
-            <LogIn className="h-6 w-6 text-primary" />
-            Iniciar Sesión
-          </CardTitle>
-          <CardDescription>
-            Accede a tu cuenta para gestionar tus análisis de seguridad.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo Electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading || isLoadingFacebook}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading || isLoadingFacebook}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading || isLoadingFacebook}>
-              {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
+    <>
+      <FacebookSdkLoader />
+      <div className="flex items-center justify-center min-h-screen bg-secondary/50 p-4">
+        <Card className="w-full max-w-md shadow-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl flex items-center justify-center gap-2">
+              <LogIn className="h-6 w-6 text-primary" />
               Iniciar Sesión
-            </Button>
-            <Button type="button" variant="outline" className="w-full" onClick={handleFacebookLogin} disabled={isLoading || isLoadingFacebook}>
-              {isLoadingFacebook ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
-              Iniciar con Facebook
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-2"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-            >
-              <FcGoogle size={24} />
-              {loading ? "Cargando..." : "Iniciar sesión con Google"}
-            </Button>
-            {error && <div className="text-red-500 mt-4">{error}</div>}
-            <p className="text-center text-sm text-muted-foreground mt-2">
-              ¿No tienes cuenta?{" "}
-              <Link href="/signup" className="underline">
-                Regístrate
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            </CardTitle>
+            <CardDescription>
+              Accede a tu cuenta para gestionar tus análisis de seguridad.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">Correo Electrónico</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading || isLoadingFacebook}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading || isLoadingFacebook}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading || isLoadingFacebook}>
+                {isLoading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
+                Iniciar Sesión
+              </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={handleFacebookLogin} disabled={isLoading || isLoadingFacebook}>
+                {isLoadingFacebook ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
+                Iniciar con Facebook
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+              >
+                <FcGoogle size={24} />
+                {loading ? "Cargando..." : "Iniciar sesión con Google"}
+              </Button>
+              {error && <div className="text-red-500 mt-4">{error}</div>}
+              <p className="text-center text-sm text-muted-foreground mt-2">
+                ¿No tienes cuenta?{" "}
+                <Link href="/signup" className="underline">
+                  Regístrate
+                </Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { AppHeader } from "@/components/layout/header";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -47,7 +47,7 @@ const tools = [
   },
 ];
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const params = useSearchParams();
   const tool = params.get('tool');
   const router = useRouter();
@@ -313,5 +313,13 @@ export default function DashboardPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div>Cargando dashboard...</div>}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }
